@@ -6,7 +6,7 @@ api.bitmex <- function(command="quote", pars, config=exchanges$bitmex$readonly) 
                 map2_chr(names(pars), ~ paste0(.y,"=",.x)) %>% paste.list(sep="&") %>% URLencode)
   sig <- hmac(config$secret, paste0("GET",q,nonce),"sha256")
   cat(q,"\n",sig)
-  ret <- GET(paste0("https://bitmex.com",q), 
+  ret <- GET(paste0("https://www.bitmex.com",q), 
              add_headers("api-key"=config$key, "api-signature"=sig, "api-nonce"=nonce))
   stop_for_status(ret)
   content(ret)
@@ -75,7 +75,7 @@ has_all_names <- function(.x, ...) {
   return(T)
 }
 
-query_history.bitmex <- function(symbols, timeframe='1h', start=lubridate::now()-months(1),config=exchanges$bitmex$readonly, ...) {
+query_history.bitmex <- function(symbols, timeframe='1h', start=lubridate::now()-months(1),stop=lubridate::now(), config=exchanges$bitmex$readonly, ...) {
   pars <- list(..., count=1, reverse="false")
   result <- data_frame()
   istart <- 0
@@ -84,7 +84,10 @@ query_history.bitmex <- function(symbols, timeframe='1h', start=lubridate::now()
     data<-symbols %>% map(function(s){
       pars1 <- pars %>% modifyList(list(symbol = s, binSize=timeframe, count=count,start=istart,startTime=strftime(start,"%Y-%m-%d %H:%M")))
       d <- api.bitmex("trade/bucketed", pars1, config=config)
-      d %>% keep(~ has_all_names(., "open","close","high","low")) %>% map(~ data_frame(
+      if(length(d)==0)
+        NULL
+      else
+        d %>% keep(~ has_all_names(., "open","close","high","low")) %>% map(~ data_frame(
                   datetime=parse_bitmex_timestamp(.$timestamp), 
                   symbol=.$symbol, 
                   currency="BTC",
@@ -93,13 +96,16 @@ query_history.bitmex <- function(symbols, timeframe='1h', start=lubridate::now()
                   low=.$low,
                   close=.$close)) %>% reduce(bind_rows)
     }) 
-    browser()
     if(length(data)==0)
       break
     data<- data %>% reduce(bind_rows) %>% arrange(datetime)
     if(nrow(data)==0)
       break
+    taildt<-tail(data$datetime,1)
+    cat("rows loaded",nrow(data),taildt)
     result <- bind_rows(result, data)
+    if(taildt>stop)
+      break
     istart <- istart+count
   }
   #read_json("~/Downloads/.BXBT.json") %>% map(~ data_frame(BXBT=.$close,datetime=as_datetime(.$timestamp))) %>% bind_rows()
