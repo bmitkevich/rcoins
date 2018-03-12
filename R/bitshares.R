@@ -3,7 +3,8 @@ rpc_json.bitshares <- function(method, params) {
 }
 
 bitshares_url = #"https://bitshares.openledger.info/ws"
-"https://api.bts.blckchnd.com/ws"
+#"https://dex.rnglab.org"
+  "https://api.bts.blckchnd.com"
 rpc.bitshares <- function(method, ...) {
   rs <- POST(bitshares_url, body=rpc_json.bitshares(method,  list(...)))
   (content(rs,"text") %>% fromJSON())$result
