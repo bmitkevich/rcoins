@@ -1,11 +1,11 @@
 trading_api.binance <- function(command="account", config=exchanges$binance$readonly, ...) {
   req <- list(
-    timestamp = toString(trunc(as.numeric(Sys.time())*1000))
+    timestamp = toString(trunc(as.numeric(Sys.time())*1000)),
+    recvWindow = "50000"
   ) %>% c(list(...))
   uri <- paste0("https://api.binance.com/api/v3/",command)
   uri1 <- httr:::compose_query(req)
   xuri <- paste0(uri,"?",uri1,"&signature=",hmac(config$secret, uri1, "sha256"))
-  #browser()
   ret <- GET(xuri,
               add_headers("X-MBX-APIKEY"=config$key))
   stop_for_status(ret)
